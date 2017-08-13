@@ -71,8 +71,8 @@ async function populateDependencies(name, reference) {
     if (pi.dependencies === undefined) {
       pi.dependencies = {};
     }
-    if (pi.devDependencies !== undefined) {
-      // TBD
+    if (pi.peerDependencies !== undefined) {
+      throw ":("
     }
     const deps = Object.keys(pi.dependencies).map(packageName => {
       return `${packageName}@${pi.dependencies[packageName]}`;
