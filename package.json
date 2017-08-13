@@ -1,0 +1,22 @@
+{
+  "name": "xarn",
+  "version": "0.0.1",
+  "description": "Package Manager",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "gunzip-maybe": "^1.4.1",
+    "lodash": "^4.17.4",
+    "memoizeasync": "^1.0.0",
+    "node-fetch": "^1.7.1",
+    "p-memoize": "^1.0.0",
+    "progress": "^2.0.0",
+    "semver": "^5.4.1",
+    "tar-fs": "^1.15.3",
+    "tar-stream": "^1.5.4"
+  }
+}
