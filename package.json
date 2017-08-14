@@ -11,6 +11,7 @@
   "dependencies": {
     "gunzip-maybe": "^1.4.1",
     "lodash": "^4.17.4",
+    "logic-solver": "^2.0.1",
     "node-fetch": "^1.7.1",
     "p-memoize": "^1.0.0",
     "progress": "^2.0.0",

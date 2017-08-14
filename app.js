@@ -3,6 +3,7 @@ const semver = require('semver');
 const {readPackageJsonFromArchive} = require('./utilities');
 const pMemoize = require('p-memoize');
 const _ = require('lodash');
+var Logic = require('logic-solver');
 
 async function doFetchPackage({name, reference}) {
   if (semver.valid(reference)) {
@@ -62,7 +63,7 @@ function isExactReference(reference) {
 async function populateRootDependency(name, reference) {
 
   var dependencies = {};
-  dependencies["root"] = `${name}@${reference}`;
+  dependencies["root"] = new AndNode([`${name}@${reference}`]);
 
   async function populateDependencies(name, reference) {
     const key = `${name}@${reference}`;
@@ -129,7 +130,48 @@ async function fetchUrlAsBuffer(url) {
   return await response.buffer();
 }
 
+function getSatisfyingInstalls(deps) {
+    var solver = new Logic.Solver();
+    solver.require('root');
+
+    solver.require(
+      Logic.lessThan(
+        Logic.sum(Object.keys(deps)),
+        Logic.constantBits(98),
+      ));
+
+    for (let variable of Object.keys(deps)) {
+      const varDeps = deps[variable];
+      if (varDeps instanceof OrNode) {
+        solver.require(Logic.implies(variable, Logic.or(varDeps.arr)));
+      } else if (varDeps instanceof AndNode) {
+        solver.require(Logic.implies(variable, Logic.and(varDeps.arr)));
+      } else {
+        console.log(variable, varDeps);
+        throw ":(";
+      }
+    }
+
+    var solutions = [];
+    var curSol;
+    while ((curSol = solver.solve())) {
+      console.log(curSol.getTrueVars().length);
+      return;
+      solutions.push(curSol.getTrueVars());
+      solver.forbid(curSol.getFormula()); // forbid the current solution
+    }
+
+    // solutions
+    //
+    // const solution = solver.solve();
+    // Logic.Solver.miminizeWeightedSum(solution, )
+    // return solution.getTrueVars();
+
+}
+
 (async function() {
-  console.log(await populateRootDependency("babel-core", "=6.25.0"));
+  const deps = await populateRootDependency("babel-core", "6.25.0");
+  console.log(deps);
+  console.log(getSatisfyingInstalls(deps));
   // console.log(await populateRootDependency("react", "=15.0.0"));
 })();
