@@ -1,5 +1,5 @@
 # xarn
-A package manager that uses a SAT solver for dependency resolution. Highly experimental.
+A package manager that uses a SAT solver for dependency resolution. Highly experimental. < 300 LOC.
 
 ## Inspiration
 
