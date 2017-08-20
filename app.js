@@ -5,7 +5,7 @@ const pMemoize = require('p-memoize');
 const _ = require('lodash');
 const Logic = require('logic-solver');
 const fs = require('fs');
-const exec = require('child_process').exec;
+const execSync = require('child_process').execSync;
 
 function rmDir(dirPath, removeSelf) {
   if (removeSelf === undefined)
@@ -175,29 +175,105 @@ async function install(name, reference, dir) {
   const deps = await getDependencyGraph(name, reference);
   const solution = getSatisfyingInstalls(deps);
 
-  rmDir(dir);
+  console.log(deps);
+
+  // clean files
   if (!fs.existsSync(dir + '/node_modules')){
     fs.mkdirSync(dir + '/node_modules');
+  } else {
+    rmDir(`${dir}/node_modules`);
   }
+
+  // extract packages
   for (let package of solution) {
     if (package === "root") continue;
     const [name, version] = package.split("@");
     if (!semver.valid(version)) continue;
     const buf = await fetchPackage(name, version);
     await extractArchiveTo(buf, dir + '/node_modules/' + package);
-    console.log(package);
+    console.log("installed", package);
 
-    const child = exec(`mv ${dir}/node_modules/${package}/package/* ${dir}/node_modules/${package}; rm -rf ${dir}/node_modules/${package}/package`,
+    execSync(`mv ${dir}/node_modules/${package}/package/* ${dir}/node_modules/${package}; rm -rf ${dir}/node_modules/${package}/package`,
+      function (error, stdout, stderr) {
+          if (error !== null) {
+               console.log('exec error: ' + error);
+          }
+      });
+  }
+
+  // link root
+  for (let package of deps['root'].arr) {
+    const [name, requirement] = package.split("@");
+    var version = null;
+    for (let candidatePackage of Object.keys(deps)) {
+      if (candidatePackage === "root") continue;
+      const [candidateName, candidateVersion] = candidatePackage.split("@");
+      if (!semver.valid(candidateVersion)) continue;
+      if (candidateName !== name) continue;
+      if (semver.satisfies(candidateVersion, requirement)) {
+        version = candidateVersion;
+      }
+    }
+    if (version === null) {
+      console.log(':(');
+    }
+    execSync(`ln -s ${dir}/node_modules/${name}@${version} ${dir}/node_modules/${name}`,
+      function (error, stdout, stderr) {
+        if (error !== null) {
+            console.log('exec error: ' + error);
+        }
+      });
+    console.log("linked", package);
+  }
+
+  // link subpackages
+  for (let package of solution) {
+    if (package === "root") continue;
+    const [name, version] = package.split("@");
+    if (!semver.valid(version)) continue;
+    console.log('linking dependencies of', package);
+
+    const thisDeps = deps[package];
+    if (!(thisDeps instanceof AndNode)) {
+      console.log(":(");
+    }
+
+    for (let depPackage of thisDeps.arr) {
+      const [depName, depRequirement] = depPackage.split("@");
+      var version2 = null;
+      for (let candidatePackage of Object.keys(deps)) {
+        if (candidatePackage === "root") continue;
+        if (solution.indexOf(candidatePackage) === -1) continue;
+        const [candidateName, candidateVersion] = candidatePackage.split("@");
+        if (!semver.valid(candidateVersion)) continue;
+        if (candidateName !== depName) continue;
+        if (semver.satisfies(candidateVersion, depRequirement)) {
+          version2 = candidateVersion;
+        }
+      }
+      if (version2 === null) {
+        console.log(':(');
+      }
+      execSync(`mkdir -p ${dir}/node_modules/${package}/node_modules`,
         function (error, stdout, stderr) {
-            if (error !== null) {
-                 console.log('exec error: ' + error);
-            }
+          if (error !== null) {
+              console.log('exec error: ' + error);
+          }
         });
+      execSync(`ln -s ${dir}/node_modules/${depName}@${version2} ${dir}/node_modules/${package}/node_modules/${depName}`,
+        function (error, stdout, stderr) {
+          if (error !== null) {
+              console.log('exec error: ' + error);
+          }
+        });
+      console.log("linked", depPackage);
+    }
+
   }
 }
 
 
 (async function() {
-  await install("babel-core", "6.25.0", "./test");
+  await install("tar-stream", "1.5.4", "/Users/xuanji/xarn-test");
   // console.log(await getDependencyGraph("react", "=15.0.0"));
 })();
