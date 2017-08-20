@@ -71,7 +71,7 @@ async function populateRootDependency(name, reference) {
     if (dependencies[key] !== undefined) {
       return;
     }
-    if (isExactReference(reference)) {
+    if (semver.valid(reference)) {
       const pi = (await fetchPackageInfo(name)).versions[reference];
       if (pi === undefined) {
         throw "reference not found in registry";
@@ -134,11 +134,11 @@ function getSatisfyingInstalls(deps) {
     var solver = new Logic.Solver();
     solver.require('root');
 
-    solver.require(
-      Logic.lessThan(
-        Logic.sum(Object.keys(deps)),
-        Logic.constantBits(98),
-      ));
+    // solver.require(
+      // Logic.lessThan(
+      //   Logic.sum(Object.keys(deps)),
+      //   Logic.constantBits(98),
+      // ));
 
     for (let variable of Object.keys(deps)) {
       const varDeps = deps[variable];
@@ -152,20 +152,10 @@ function getSatisfyingInstalls(deps) {
       }
     }
 
-    var solutions = [];
-    var curSol;
-    while ((curSol = solver.solve())) {
-      console.log(curSol.getTrueVars().length);
-      return;
-      solutions.push(curSol.getTrueVars());
-      solver.forbid(curSol.getFormula()); // forbid the current solution
-    }
-
-    // solutions
-    //
-    // const solution = solver.solve();
-    // Logic.Solver.miminizeWeightedSum(solution, )
-    // return solution.getTrueVars();
+    const solution = solver.solve();
+    solver.minimizeWeightedSum(solution, Object.keys(deps), 1);
+    const solution2 = solver.solve();
+    return solution2.getTrueVars().length;
 
 }
 
