@@ -5,8 +5,7 @@ const pMemoize = require('p-memoize');
 const _ = require('lodash');
 const Logic = require('logic-solver');
 const fs = require('fs');
-const execSync = require('child_process').execSync;
-const exec = require('child_process').exec;
+const exec = require('child-process-promise').exec;
 const assert = require('assert');
 
 async function fetchPackageArchive(package) {
@@ -169,12 +168,7 @@ async function install(name, reference, dir) {
   console.log(solution);
 
   // clean files
-  execSync(`rm -rf ${dir}/node_modules`,
-    function (error, stdout, stderr) {
-      if (error !== null) {
-          console.log('exec error: ' + error);
-      }
-    });
+  await exec(`rm -rf ${dir}/node_modules`);
   fs.mkdirSync(dir + '/node_modules');
 
   // extract packages
@@ -183,51 +177,35 @@ async function install(name, reference, dir) {
     await extractArchiveTo(buf, `${dir}/node_modules/${package}`);
     console.log("installed", package);
 
-    execSync(`mv ${dir}/node_modules/${package}/package/* ${dir}/node_modules/${package}; rm -rf ${dir}/node_modules/${package}/package`,
-      function (error, stdout, stderr) {
-          if (error !== null) {
-               console.log('exec error: ' + error);
-          }
-      });
+    await exec(`mv ${dir}/node_modules/${package}/package/* ${dir}/node_modules/${package}; rm -rf ${dir}/node_modules/${package}/package`);
   })()));
 
   // link root
   for (let package of deps['root'].arr) {
     const version = getConcreteVersionAmongSolutions(solution, package);
 
-    execSync(`ln -s ${dir}/node_modules/${name}@${version} ${dir}/node_modules/${name}`,
-      function (error, stdout, stderr) {
-        if (error !== null) {
-            console.log('exec error: ' + error);
-        }
-      });
+    await exec(`ln -s ${dir}/node_modules/${name}@${version} ${dir}/node_modules/${name}`);
     console.log("linked", package);
   }
 
   // link subpackages
-  for (let package of solution) {
-    if (package === "root") continue;
-    const [name, version] = package.split("@");
-    if (!semver.valid(version)) continue;
+  await Promise.all(solution.map(package => (async function () {
     console.log('linking dependencies of', package);
 
     const thisDeps = deps[package];
     assert(thisDeps instanceof AndNode);
 
-    for (let depPackage of thisDeps.arr) {
+    await exec(`mkdir -p ${dir}/node_modules/${package}/node_modules`);
+
+    await Promise.all(thisDeps.arr.map(depPackage => (async function () {
       const [depName, depRequirement] = depPackage.split("@");
       const version2 = getConcreteVersionAmongSolutions(solution, depPackage);
 
-      execSync(`mkdir -p ${dir}/node_modules/${package}/node_modules; ln -s ${dir}/node_modules/${depName}@${version2} ${dir}/node_modules/${package}/node_modules/${depName}`,
-        function (error, stdout, stderr) {
-          if (error !== null) {
-              console.log('exec error: ' + error);
-          }
-        });
+      await exec(`ln -s ${dir}/node_modules/${depName}@${version2} ${dir}/node_modules/${package}/node_modules/${depName}`);
       console.log("linked", depPackage);
-    }
+    })()));
+  })()));
 
-  }
 }
 
 
