@@ -22,69 +22,6 @@ function getFileName(entryName, virtualPath) {
 
 }
 
-async function readFileFromArchive(fileName, buffer, {virtualPath = 0} = {}) {
-
-    return new Promise((resolve, reject) => {
-
-        let extractor = tar.extract();
-
-        extractor.on(`entry`, (header, stream, next) => {
-
-            if (getFileName(header.name, virtualPath) === fileName) {
-
-                var buffers = [];
-
-                stream.on(`data`, data => {
-                    buffers.push(data);
-                });
-
-                stream.on(`error`, error => {
-                    reject(error);
-                });
-
-                stream.on(`end`, () => {
-                    resolve(Buffer.concat(buffers));
-                });
-
-            } else {
-
-                stream.on(`end`, () => {
-                    next();
-                });
-
-            }
-
-            stream.resume();
-        });
-
-        extractor.on(`error`, error => {
-            reject(error);
-        });
-
-        extractor.on(`finish`, () => {
-            reject(new Error(`Couldn't find "${fileName}" inside the archive`));
-        });
-
-        let gunzipper = gunzipMaybe();
-        gunzipper.pipe(extractor);
-
-        gunzipper.on(`error`, error => {
-            reject(error);
-        });
-
-        gunzipper.write(buffer);
-        gunzipper.end();
-
-    });
-
-}
-
-async function readPackageJsonFromArchive(packageBuffer) {
-
-    return await readFileFromArchive(`package.json`, packageBuffer, {virtualPath: 1});
-
-}
-
 async function extractArchiveTo(packageBuffer, target, {virtualPath = 0} = {}) {
 
     return new Promise((resolve, reject) => {
@@ -114,33 +51,4 @@ async function extractArchiveTo(packageBuffer, target, {virtualPath = 0} = {}) {
 
 }
 
-async function extractNpmArchiveTo(packageBuffer, target) {
-
-    return await extractArchiveTo(packageBuffer, target, {virtualPath: 1});
-
-}
-
-async function trackProgress(cb) {
-
-    let pace = new Progress(`:bar :current/:total (:elapseds)`, {width: 80, total: 1});
-
-    try {
-
-        return await cb(pace);
-
-    } finally {
-
-        if (!pace.complete) {
-            pace.update(1);
-            pace.terminate();
-        }
-
-    }
-
-}
-
-module.exports.readFileFromArchive = readFileFromArchive;
-module.exports.trackProgress = trackProgress;
-module.exports.extractNpmArchiveTo = extractNpmArchiveTo;
 module.exports.extractArchiveTo = extractArchiveTo;
-module.exports.readPackageJsonFromArchive = readPackageJsonFromArchive;
