@@ -90,3 +90,32 @@ lrwxr-xr-x  1  56 Aug 19 22:24 end-of-stream -> /Users/xuanji/xarn-test/node_mod
 lrwxr-xr-x  1  58 Aug 19 22:24 readable-stream -> /Users/xuanji/xarn-test/node_modules/readable-stream@2.0.3
 lrwxr-xr-x  1  48 Aug 19 22:24 xtend -> /Users/xuanji/xarn-test/node_modules/xtend@4.0.0
 ```
+
+We also print the link tree
+
+```
+string_decoder@0.10.31
+readable-stream@2.0.3
+└──core-util-is@~1.0.0 -> 1.0.2
+└──inherits@~2.0.1 -> 2.0.3
+└──isarray@0.0.1 -> 0.0.1
+└──process-nextick-args@~1.0.0 -> 1.0.7
+└──string_decoder@~0.10.x -> 0.10.31
+└──util-deprecate@~1.0.1 -> 1.0.2
+process-nextick-args@1.0.7
+once@1.3.0
+isarray@0.0.1
+inherits@2.0.3
+end-of-stream@1.1.0
+└──once@~1.3.0 -> 1.3.0
+core-util-is@1.0.2
+bl@1.0.0
+└──readable-stream@~2.0.0 -> 2.0.3
+xtend@4.0.0
+util-deprecate@1.0.2
+tar-stream@1.5.4
+└──bl@^1.0.0 -> 1.0.0
+└──end-of-stream@^1.0.0 -> 1.1.0
+└──readable-stream@^2.0.0 -> 2.0.3
+└──xtend@^4.0.0 -> 4.0.0
+```
