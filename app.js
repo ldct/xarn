@@ -6,6 +6,7 @@ const _ = require('lodash');
 const Logic = require('logic-solver');
 const fs = require('fs');
 const execSync = require('child_process').execSync;
+const exec = require('child_process').exec;
 
 function rmDir(dirPath, removeSelf) {
   if (removeSelf === undefined)
@@ -117,9 +118,7 @@ async function getDependencyGraph(name, reference) {
         return `${name}@${version}`
       });
       dependencies[key] = new OrNode(matching_named_versions);
-      for (let version of matching_versions) {
-        await populateDependencies(name, version);
-      }
+      await Promise.all(matching_versions.map(version => populateDependencies(name, version)));
     }
   }
 
@@ -172,8 +171,11 @@ function getSatisfyingInstalls(deps) {
 }
 
 async function install(name, reference, dir) {
+  console.log('starting install...');
   const deps = await getDependencyGraph(name, reference);
+  console.log('got dependency graph');
   const solution = getSatisfyingInstalls(deps);
+  console.log('solved dependency graph');
 
   console.log(solution);
 
@@ -187,10 +189,10 @@ async function install(name, reference, dir) {
   fs.mkdirSync(dir + '/node_modules');
 
   // extract packages
-  for (let package of solution) {
-    if (package === "root") continue;
+  await Promise.all(solution.map(package => (async function () {
+    if (package === "root") return;
     const [name, version] = package.split("@");
-    if (!semver.valid(version)) continue;
+    if (!semver.valid(version)) return;
     const buf = await fetchPackage(name, version);
     await extractArchiveTo(buf, dir + '/node_modules/' + package);
     console.log("installed", package);
@@ -201,7 +203,7 @@ async function install(name, reference, dir) {
                console.log('exec error: ' + error);
           }
       });
-  }
+  })()));
 
   // link root
   for (let package of deps['root'].arr) {
@@ -256,13 +258,7 @@ async function install(name, reference, dir) {
       if (version2 === null) {
         console.log(':(');
       }
-      execSync(`mkdir -p ${dir}/node_modules/${package}/node_modules`,
-        function (error, stdout, stderr) {
-          if (error !== null) {
-              console.log('exec error: ' + error);
-          }
-        });
-      execSync(`ln -s ${dir}/node_modules/${depName}@${version2} ${dir}/node_modules/${package}/node_modules/${depName}`,
+      execSync(`mkdir -p ${dir}/node_modules/${package}/node_modules; ln -s ${dir}/node_modules/${depName}@${version2} ${dir}/node_modules/${package}/node_modules/${depName}`,
         function (error, stdout, stderr) {
           if (error !== null) {
               console.log('exec error: ' + error);
