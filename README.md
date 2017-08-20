@@ -45,6 +45,10 @@ The special `root` dependency represents the package the user requested.
 
 ### Satisfying Solution
 
+By representing both package ranges and concerte packages as variables, we can ship the dependency graph off directly to a SAT solver, in this case MINISAT. We ask for a satisfying solution (set of variables) with the smallest number of true variables, but other optimizations are conceivable.
+
+We don't really need the complete solution set, however, just the set of concrete packages to be installed.
+
 ```
 [ 'bl@1.0.0',
   'core-util-is@1.0.2',
@@ -59,10 +63,6 @@ The special `root` dependency represents the package the user requested.
   'util-deprecate@1.0.2',
   'xtend@4.0.0' ]
 ```
-
-By representing both package ranges and concerte packages as variables, we can ship the dependency graph off directly to a SAT solver, in this case MINISAT. We ask for a satisfying solution (set of variables) with the smallest number of true variables, but other optimizations are conceivable.
-
-We don't really need the complete solution set, however, just the set of concrete packages to be installed.
 
 ### Link Tree
 
