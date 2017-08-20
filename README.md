@@ -142,10 +142,10 @@ Binaries, devDependencies, tests, install scripts...basically, we only read the 
 
 We can probably implement `flat` mode without any manual user input
 
-## peerDependencies
+### peerDependencies
 
 https://github.com/yarnpkg/yarn/issues/422
 
-## Testing
+### Testing
 
 It would be fun to use this to run project tests to see which projects had implicitly depended on npm/yarn's "choose the newest satisfying package" resolution behaviour, ie had inaccurate semver ranges.
