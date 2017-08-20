@@ -1,5 +1,11 @@
 # xarn
-A package manager
+A package manager that uses a SAT solver for dependency resolution. Highly experimental.
+
+## Inspiration
+
+https://yarnpkg.com/blog/2017/07/11/lets-dev-a-package-manager/
+
+meteorjs also uses a SAT solver
 
 ## Demo
 
@@ -119,3 +125,27 @@ tar-stream@1.5.4
 └──readable-stream@^2.0.0 -> 2.0.3
 └──xtend@^4.0.0 -> 4.0.0
 ```
+
+## Disadvantages
+
+This reads a ton of data from the npm registry, basically it needs to know the tranistive closure of the dependencies at every version. Also, the "minimize true" heuristic is pretty poor, in this case choosing an older version of `bl` just because the new version split out some dependencies.
+
+In the presence of peerDependencies, optimization targets like "recency" may form a lattice with multiple solutions, none of which are better than the others.
+
+## Missing features
+
+Binaries, devDependencies, tests, install scripts...basically, we only read the `dependencies` field of `package.json`, so anything configured with any other field does not work now.
+
+## Future work
+
+### flat mode
+
+We can probably implement `flat` mode without any manual user input
+
+## peerDependencies
+
+https://github.com/yarnpkg/yarn/issues/422
+
+## Testing
+
+It would be fun to use this to run project tests to see which projects had implicitly depended on npm/yarn's "choose the newest satisfying package" resolution behaviour, ie had inaccurate semver ranges.
