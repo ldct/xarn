@@ -34,7 +34,7 @@ xarn runs in 3 stages; the intermediate data structures computed by each stage a
 }
 ```
 
-The dependency graph shows which which packages depend on what, and in which way. For instance, `tar-stream@1.5.4` is a concrete package with 4 dependencies, the first of which is `bl@^1.0.0`. `bl@^1.0.0` is not a concrete package but contains a semver range; hence it can be satisfied by any of the 8 concrete packages `bl@1.0.0`, `bl@1.0.2`, ...`bl@1.2.1`).
+The dependency graph shows which which packages depend on what, and in which way. For instance, `tar-stream@1.5.4` is a concrete package with 4 dependencies, the first of which is `bl@^1.0.0`. `bl@^1.0.0` is not a concrete package but contains a semver range; hence it can be satisfied by any of the 8 concrete packages (`bl@1.0.0`, `bl@1.0.2`, ...`bl@1.2.1`).
 
 In general there are two types of variables, representing 1. concrete packages and 2. package ranges.
 
