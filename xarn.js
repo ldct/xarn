@@ -162,9 +162,9 @@ function getConcreteVersionAmongSolutions(solution, package) {
 
 async function install(name, reference, dir) {
   const deps = await getDependencyGraph(name, reference);
-  console.log('got dependency graph');
+  console.log(deps);
   const solution = getSatisfyingInstalls(deps);
-  console.log('solved dependency graph');
+  console.log(solution);
 
 
   // clean files
