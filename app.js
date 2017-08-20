@@ -1,11 +1,30 @@
 const fetch = require('node-fetch');
 const semver = require('semver');
-const {readPackageJsonFromArchive} = require('./utilities');
+const {extractArchiveTo} = require('./utilities');
 const pMemoize = require('p-memoize');
 const _ = require('lodash');
-var Logic = require('logic-solver');
+const Logic = require('logic-solver');
+const fs = require('fs');
+const exec = require('child_process').exec;
 
-async function doFetchPackage({name, reference}) {
+function rmDir(dirPath, removeSelf) {
+  if (removeSelf === undefined)
+    removeSelf = false;
+  try { var files = fs.readdirSync(dirPath); }
+  catch(e) { return; }
+  if (files.length > 0)
+    for (var i = 0; i < files.length; i++) {
+      var filePath = dirPath + '/' + files[i];
+      if (fs.statSync(filePath).isFile())
+        fs.unlinkSync(filePath);
+      else
+        rmDir(filePath);
+    }
+  if (removeSelf)
+    fs.rmdirSync(dirPath);
+};
+
+async function fetchPackage(name, reference) {
   if (semver.valid(reference)) {
     return await fetchUrlAsBuffer(`https://registry.yarnpkg.com/${name}/-/${name}-${reference}.tgz`)
   } else {
@@ -21,7 +40,6 @@ function orderify(unordered) {
   return ordered;
 }
 
-const fetchPackage = pMemoize(doFetchPackage);
 
 async function fetchUrlAsJson(url) {
   let response = await fetch(url);
@@ -60,7 +78,7 @@ function isExactReference(reference) {
 }
 
 
-async function populateRootDependency(name, reference) {
+async function getDependencyGraph(name, reference) {
 
   var dependencies = {};
   dependencies["root"] = new AndNode([`${name}@${reference}`]);
@@ -134,12 +152,6 @@ function getSatisfyingInstalls(deps) {
     var solver = new Logic.Solver();
     solver.require('root');
 
-    // solver.require(
-      // Logic.lessThan(
-      //   Logic.sum(Object.keys(deps)),
-      //   Logic.constantBits(98),
-      // ));
-
     for (let variable of Object.keys(deps)) {
       const varDeps = deps[variable];
       if (varDeps instanceof OrNode) {
@@ -155,13 +167,37 @@ function getSatisfyingInstalls(deps) {
     const solution = solver.solve();
     solver.minimizeWeightedSum(solution, Object.keys(deps), 1);
     const solution2 = solver.solve();
-    return solution2.getTrueVars().length;
+    return solution2.getTrueVars();
 
 }
 
+async function install(name, reference, dir) {
+  const deps = await getDependencyGraph(name, reference);
+  const solution = getSatisfyingInstalls(deps);
+
+  rmDir(dir);
+  if (!fs.existsSync(dir + '/node_modules')){
+    fs.mkdirSync(dir + '/node_modules');
+  }
+  for (let package of solution) {
+    if (package === "root") continue;
+    const [name, version] = package.split("@");
+    if (!semver.valid(version)) continue;
+    const buf = await fetchPackage(name, version);
+    await extractArchiveTo(buf, dir + '/node_modules/' + package);
+    console.log(package);
+
+    const child = exec(`mv ${dir}/node_modules/${package}/package/* ${dir}/node_modules/${package}; rm -rf ${dir}/node_modules/${package}/package`,
+        function (error, stdout, stderr) {
+            if (error !== null) {
+                 console.log('exec error: ' + error);
+            }
+        });
+  }
+}
+
+
 (async function() {
-  const deps = await populateRootDependency("babel-core", "6.25.0");
-  console.log(deps);
-  console.log(getSatisfyingInstalls(deps));
-  // console.log(await populateRootDependency("react", "=15.0.0"));
+  await install("babel-core", "6.25.0", "./test");
+  // console.log(await getDependencyGraph("react", "=15.0.0"));
 })();
