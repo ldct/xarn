@@ -9,9 +9,10 @@ const execSync = require('child_process').execSync;
 const exec = require('child_process').exec;
 const assert = require('assert');
 
-async function fetchPackage(name, reference) {
-  assert(semver.valid(reference));
-  return await fetchUrlAsBuffer(`https://registry.yarnpkg.com/${name}/-/${name}-${reference}.tgz`)
+async function fetchPackageArchive(package) {
+  const [name, requirement] = package.split("@");
+  assert(semver.valid(requirement)); // check that it's a valid pinned reference
+  return await fetchUrlAsBuffer(`https://registry.yarnpkg.com/${name}/-/${name}-${requirement}.tgz`)
 }
 
 function orderify(unordered) {
@@ -137,16 +138,18 @@ function getSatisfyingInstalls(deps) {
     const solution = solver.solve();
     solver.minimizeWeightedSum(solution, Object.keys(deps), 1);
     const solution2 = solver.solve();
-    return solution2.getTrueVars();
+    return solution2.getTrueVars().filter(package => {
+      if (package === 'root') return false;
+      const [name, requirement] = package.split("@");
+      return semver.valid(requirement);
+    });
 
 }
 
 function getConcreteVersionAmongSolutions(solution, package) {
   const [name, requirement] = package.split("@");
   for (let candidatePackage of solution) {
-    if (candidatePackage === "root") continue;
     const [candidateName, candidateVersion] = candidatePackage.split("@");
-    if (!semver.valid(candidateVersion)) continue;
     if (candidateName !== name) continue;
     if (semver.satisfies(candidateVersion, requirement)) {
       version = candidateVersion;
@@ -176,11 +179,8 @@ async function install(name, reference, dir) {
 
   // extract packages
   await Promise.all(solution.map(package => (async function () {
-    if (package === "root") return;
-    const [name, version] = package.split("@");
-    if (!semver.valid(version)) return;
-    const buf = await fetchPackage(name, version);
-    await extractArchiveTo(buf, dir + '/node_modules/' + package);
+    const buf = await fetchPackageArchive(package);
+    await extractArchiveTo(buf, `${dir}/node_modules/${package}`);
     console.log("installed", package);
 
     execSync(`mv ${dir}/node_modules/${package}/package/* ${dir}/node_modules/${package}; rm -rf ${dir}/node_modules/${package}/package`,
