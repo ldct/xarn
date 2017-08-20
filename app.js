@@ -175,14 +175,16 @@ async function install(name, reference, dir) {
   const deps = await getDependencyGraph(name, reference);
   const solution = getSatisfyingInstalls(deps);
 
-  console.log(deps);
+  console.log(solution);
 
   // clean files
-  if (!fs.existsSync(dir + '/node_modules')){
-    fs.mkdirSync(dir + '/node_modules');
-  } else {
-    rmDir(`${dir}/node_modules`);
-  }
+  execSync(`rm -rf ${dir}/node_modules`,
+    function (error, stdout, stderr) {
+      if (error !== null) {
+          console.log('exec error: ' + error);
+      }
+    });
+  fs.mkdirSync(dir + '/node_modules');
 
   // extract packages
   for (let package of solution) {
