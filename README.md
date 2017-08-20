@@ -9,9 +9,9 @@ meteorjs also uses a SAT solver
 
 ## Demo
 
-```
+```bash
 mkdir -p ~/xarn-test
-`./xarn.js tar-stream@1.5.4 ~/xarn-test
+./xarn.js tar-stream@1.5.4 ~/xarn-test
 cp ./tar-test.js ~/xarn-test
 cd ~/xarn-test
 node ./tar-test.js
