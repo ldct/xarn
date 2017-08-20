@@ -7,30 +7,11 @@ const Logic = require('logic-solver');
 const fs = require('fs');
 const execSync = require('child_process').execSync;
 const exec = require('child_process').exec;
-
-function rmDir(dirPath, removeSelf) {
-  if (removeSelf === undefined)
-    removeSelf = false;
-  try { var files = fs.readdirSync(dirPath); }
-  catch(e) { return; }
-  if (files.length > 0)
-    for (var i = 0; i < files.length; i++) {
-      var filePath = dirPath + '/' + files[i];
-      if (fs.statSync(filePath).isFile())
-        fs.unlinkSync(filePath);
-      else
-        rmDir(filePath);
-    }
-  if (removeSelf)
-    fs.rmdirSync(dirPath);
-};
+const assert = require('assert');
 
 async function fetchPackage(name, reference) {
-  if (semver.valid(reference)) {
-    return await fetchUrlAsBuffer(`https://registry.yarnpkg.com/${name}/-/${name}-${reference}.tgz`)
-  } else {
-      throw new Error('not a valid semver reference')
-  }
+  assert(semver.valid(reference));
+  return await fetchUrlAsBuffer(`https://registry.yarnpkg.com/${name}/-/${name}-${reference}.tgz`)
 }
 
 function orderify(unordered) {
@@ -41,12 +22,11 @@ function orderify(unordered) {
   return ordered;
 }
 
-
 async function fetchUrlAsJson(url) {
-  let response = await fetch(url);
+  const response = await fetch(url);
   if (!response.ok)
     throw new Error(`Couldn't fetch package "${url}"`);
-  let body = await response.text();
+  const body = await response.text();
   return JSON.parse(body);
 }
 
@@ -74,11 +54,6 @@ class AndNode {
   }
 }
 
-function isExactReference(reference) {
-  return reference.match(/^[0-9]*\.[0-9]*\.[0-9]*(\-.*$)?/) !== null;
-}
-
-
 async function getDependencyGraph(name, reference) {
 
   var dependencies = {};
@@ -98,9 +73,7 @@ async function getDependencyGraph(name, reference) {
       if (pi.dependencies === undefined) {
         pi.dependencies = {};
       }
-      if (pi.peerDependencies !== undefined) {
-        throw ":("
-      }
+      assert(pi.peerDependencies === undefined);
       const deps = Object.keys(pi.dependencies).map(packageName => {
         return `${packageName}@${pi.dependencies[packageName]}`;
       });
@@ -131,17 +104,16 @@ async function getDependencyGraph(name, reference) {
 async function doFetchPackageInfo(name) {
   return await fetchUrlAsJson(`https://registry.npmjs.org/${name}`);
 }
-
 const fetchPackageInfo = pMemoize(doFetchPackageInfo);
 
 async function fetchPackageVersions(name) {
-  let j = await fetchPackageInfo(name);
+  const j = await fetchPackageInfo(name);
   return Object.keys(j.versions);
 }
 
 
 async function fetchUrlAsBuffer(url) {
-  let response = await fetch(url);
+  const response = await fetch(url);
   if (!response.ok)
     throw new Error(`Couldn't fetch package "${url}"`);
   return await response.buffer();
@@ -158,8 +130,7 @@ function getSatisfyingInstalls(deps) {
       } else if (varDeps instanceof AndNode) {
         solver.require(Logic.implies(variable, Logic.and(varDeps.arr)));
       } else {
-        console.log(variable, varDeps);
-        throw ":(";
+        assert(false);
       }
     }
 
@@ -168,6 +139,21 @@ function getSatisfyingInstalls(deps) {
     const solution2 = solver.solve();
     return solution2.getTrueVars();
 
+}
+
+function getConcreteVersionAmongSolutions(solution, package) {
+  const [name, requirement] = package.split("@");
+  for (let candidatePackage of solution) {
+    if (candidatePackage === "root") continue;
+    const [candidateName, candidateVersion] = candidatePackage.split("@");
+    if (!semver.valid(candidateVersion)) continue;
+    if (candidateName !== name) continue;
+    if (semver.satisfies(candidateVersion, requirement)) {
+      version = candidateVersion;
+    }
+  }
+  assert(version !== null);
+  return version;
 }
 
 async function install(name, reference, dir) {
@@ -207,20 +193,8 @@ async function install(name, reference, dir) {
 
   // link root
   for (let package of deps['root'].arr) {
-    const [name, requirement] = package.split("@");
-    var version = null;
-    for (let candidatePackage of Object.keys(deps)) {
-      if (candidatePackage === "root") continue;
-      const [candidateName, candidateVersion] = candidatePackage.split("@");
-      if (!semver.valid(candidateVersion)) continue;
-      if (candidateName !== name) continue;
-      if (semver.satisfies(candidateVersion, requirement)) {
-        version = candidateVersion;
-      }
-    }
-    if (version === null) {
-      console.log(':(');
-    }
+    const version = getConcreteVersionAmongSolutions(solution, package);
+
     execSync(`ln -s ${dir}/node_modules/${name}@${version} ${dir}/node_modules/${name}`,
       function (error, stdout, stderr) {
         if (error !== null) {
@@ -238,26 +212,12 @@ async function install(name, reference, dir) {
     console.log('linking dependencies of', package);
 
     const thisDeps = deps[package];
-    if (!(thisDeps instanceof AndNode)) {
-      console.log(":(");
-    }
+    assert(thisDeps instanceof AndNode);
 
     for (let depPackage of thisDeps.arr) {
       const [depName, depRequirement] = depPackage.split("@");
-      var version2 = null;
-      for (let candidatePackage of Object.keys(deps)) {
-        if (candidatePackage === "root") continue;
-        if (solution.indexOf(candidatePackage) === -1) continue;
-        const [candidateName, candidateVersion] = candidatePackage.split("@");
-        if (!semver.valid(candidateVersion)) continue;
-        if (candidateName !== depName) continue;
-        if (semver.satisfies(candidateVersion, depRequirement)) {
-          version2 = candidateVersion;
-        }
-      }
-      if (version2 === null) {
-        console.log(':(');
-      }
+      const version2 = getConcreteVersionAmongSolutions(solution, depPackage);
+
       execSync(`mkdir -p ${dir}/node_modules/${package}/node_modules; ln -s ${dir}/node_modules/${depName}@${version2} ${dir}/node_modules/${package}/node_modules/${depName}`,
         function (error, stdout, stderr) {
           if (error !== null) {
