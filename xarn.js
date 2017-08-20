@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const fetch = require('node-fetch');
 const semver = require('semver');
 const {extractArchiveTo} = require('./utilities');
@@ -204,8 +206,13 @@ async function install(name, reference, dir) {
 
 }
 
+if (process.argv.length !== 4) {
+  console.log("Usage: ./xarn.js package@version directory")
+} else {
+  const [name, version] = process.argv[2].split('@');
+  (async function() {
+    await install(name, version, process.argv[3]);
+    // console.log(await getDependencyGraph("react", "=15.0.0"));
+  })();
 
-(async function() {
-  await install("tar-stream", "1.5.4", "/Users/xuanji/xarn-test");
-  // console.log(await getDependencyGraph("react", "=15.0.0"));
-})();
+}
