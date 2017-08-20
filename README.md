@@ -43,7 +43,7 @@ In general there are two types of variables, representing 1. concrete packages a
 
 The special `root` dependency represents the package the user requested.
 
-### Solution
+### Satisfying Solution
 
 ```
 [ 'bl@1.0.0',
