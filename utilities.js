@@ -1,5 +1,4 @@
 const gunzipMaybe = require('gunzip-maybe');
-const Progress    = require('progress');
 const tarFs       = require('tar-fs');
 const tar         = require('tar-stream');
 

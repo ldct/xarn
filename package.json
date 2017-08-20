@@ -6,17 +6,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "github.com/ldct",
   "license": "ISC",
   "dependencies": {
-    "babel-core": "^6.25.0",
     "child-process-promise": "^2.2.1",
     "gunzip-maybe": "^1.4.1",
     "lodash": "^4.17.4",
     "logic-solver": "^2.0.1",
     "node-fetch": "^1.7.1",
     "p-memoize": "^1.0.0",
-    "progress": "^2.0.0",
     "semver": "^5.4.1",
     "tar-fs": "^1.15.3",
     "tar-stream": "^1.5.4"
