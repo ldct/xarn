@@ -11,7 +11,7 @@ meteorjs also uses a SAT solver
 
 https://github.com/yarnpkg/yarn/issues/422
 
-See also "future work"
+See also https://github.com/ldct/xarn#future-work
 
 ## Demo
 
